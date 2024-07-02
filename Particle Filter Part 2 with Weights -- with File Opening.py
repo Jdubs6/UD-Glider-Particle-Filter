@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import random
 import numpy as np
 import csv
-data = open(r'C:\Users\27imb\OneDrive\Desktop\Particle Filter\Glider Data Fake.csv')
+data = open(r'C:\Users\27imb\Downloads\maracoos_01-20240124T1612_bffa_2334_762f.csv')
 csvFile= csv.reader(data)
 ask_multiple = input("First run? Y or N")
 initial_position_2 = []
@@ -13,20 +13,22 @@ commanded_position = []
 actual_position = []
 for num, row in enumerate(csvFile):
     if ask_multiple == "N":
-        if num==0:
-            initial_position_2.append(float(row[0]))
-            initial_position_2.append(float(row[1]))
-            commanded_position_2.append(float(row[3]))
+        if num==76: #Selects row 77 in Excel
+            initial_position_2.append(float(row[14])) #Selects the data from the cell in column 15 of the Excel sheet (So row 77, column 15). 
+            initial_position_2.append(float(row[15]))
+        if num==153: 
             commanded_position_2.append(float(row[4]))
-            actual_position_2.append(float(row[6]))
-            actual_position_2.append(float(row[7]))
-    if num==1:
-        initial_position.append(float(row[0]))
-        initial_position.append(float(row[1]))
-        commanded_position.append(float(row[3]))
+            commanded_position_2.append(float(row[5]))
+            actual_position_2.append(float(row[14]))
+            actual_position_2.append(float(row[15]))
+    if num==2:
+        initial_position.append(float(row[14]))
+        initial_position.append(float(row[15]))
+    if num==71:
         commanded_position.append(float(row[4]))
-        actual_position.append(float(row[6]))
-        actual_position.append(float(row[7]))
+        commanded_position.append(float(row[5]))
+        actual_position.append(float(row[14]))
+        actual_position.append(float(row[15]))
         continue
 # Note: Some datasets do not have a commanded_position!!!!
 number_of_samples = 200
