@@ -11,6 +11,7 @@ def update_weights(particles, measurement, measurement_std=0.001):
     Update particle weights based on the measurement.
     """
     distances = np.linalg.norm(particles - measurement, axis=1)
+    # print(distances)
     weights = np.exp(-0.5 * (distances / measurement_std) ** 2) + 1e-6
 
     return weights / np.sum(weights)  # Normalize weights
@@ -26,7 +27,7 @@ def resample(particles, measurement, measurement_std=0.001):
 
 
 
-def estimate_positions(initial_positions, heading_angle, t=1, v_kinematic=0.29, n_samples=200, n_g_std = 0.0001, n_c_std =0.005):
+def estimate_positions(initial_positions, heading_angle, t=1, v_kinematic=0.29, n_samples=200, n_g_std = 0.0005, n_c_std =0.005):
     '''
     Input: 
         initial_positions: One or multiple initial positions for the glider, size (1,2) or (n_samples,2)
@@ -50,7 +51,7 @@ def estimate_positions(initial_positions, heading_angle, t=1, v_kinematic=0.29, 
     v_g_east = np.cos(heading_angle)*v_kinematic
 
     # Calculate current's velocity components
-    v_c_east, v_c_north = 0,0 #get_closest_current(initial_positions[:,0],initial_positions[:,1], t)
+    v_c_east, v_c_north = get_closest_current(initial_positions[:,0],initial_positions[:,1], t)
     # v_c_east, v_c_north = v_c_east*0.51, v_c_north*0.51
     # print("current:", v_c_east, v_c_north)
     n_g_mean, n_c_mean = 0, 0
@@ -68,8 +69,12 @@ def estimate_positions(initial_positions, heading_angle, t=1, v_kinematic=0.29, 
     dive_duration = 2*3600 # in seconds
 
     # Calculate traveled distance
-    d_east = v_east*dive_duration/111139
-    d_north = v_north*dive_duration/111139
+    # d_east = v_east*dive_duration/111139
+    # d_north = v_north*dive_duration/111139
+
+    r_earth = 6378137
+    d_north  =  (v_north * dive_duration / r_earth) * (180 / np.pi)
+    d_east =  (v_east * dive_duration / r_earth) * (180 / np.pi) / np.cos(initial_positions[:,1] * np.pi/180)
 
     # Calculate estimated positions of the glider
     estimated_long = initial_positions[:,0] + d_east #Finds new position, converts into lattitude and longitude again, than adds to new_position list. 
@@ -93,15 +98,15 @@ def initialize_particles(initial_position, n_samples=200):
 
 def plot_positions(initial_positions, estimated_positions, commanded_position=None, measured_position=None, resampled_positions=None):
     
-    plt.scatter(initial_positions[:,:,0], initial_positions[:,:,1], color='red', marker='.', label='Initial position')
+    plt.scatter(initial_positions[:,:,0], initial_positions[:,:,1], color='red', marker='.')
 
     # plt.scatter(estimated_positions[:,:,0], estimated_positions[:,:,1], color='orange', marker='.', label='Estimated positions')
     # if commanded_position:
     #     plt.scatter(commanded_position[0], commanded_position[1], color='yellow', marker='x', label='Commanded position')
     if measured_position:
-        plt.scatter(measured_position[0], measured_position[1], color='blue', marker='x', label='Measurement after 2 hours')
+        plt.scatter(measured_position[0], measured_position[1], color='blue', marker='x')
     # if resampled_positions:
-        plt.scatter(resampled_positions[:,:,0], resampled_positions[:,:,1], color='green', marker='.', label='Resampled positions')
+        # plt.scatter(resampled_positions[:,:,0], resampled_positions[:,:,1], color='green', marker='.', label='Resampled positions')
 
 
 def initialize_particles(initial_position, n_samples=200):
@@ -115,13 +120,35 @@ def initialize_particles(initial_position, n_samples=200):
 
     return initial_positions
 
+def convert_dmm_to_dd(dmm_value):
+        if dmm_value < 0: 
+            degrees = -dmm_value // 100
+            minutes = -dmm_value % 100
+            return -(degrees + (minutes / 60))
+        else:
+            degrees = dmm_value // 100
+            minutes = dmm_value % 100
+            return degrees + (minutes / 60)
+             
 
-def run_filter(duration, startLong=-74.239733, startLat=38.414779, v_kinematic=0.29, n_samples=200, n_g_std=0.005, n_c_std=0.005):
+def dmm_to_dd(coords_list):
+    dd_list = []
+    for coord in coords_list:
+        lon_dd = convert_dmm_to_dd(coord[0])
+        lat_dd = convert_dmm_to_dd(coord[1])
+        dd_list.append([lon_dd, lat_dd])
+    
+    return dd_list
+
+
+def run_filter(duration, startLong=convert_dmm_to_dd(-7423.9733), startLat=convert_dmm_to_dd(3841.4779), v_kinematic=0.29, n_samples=200, n_g_std=0.005, n_c_std=0.005):
     initial_position = [startLong, startLat]
     estimated_positions = np.zeros((1,200,2))
-    commanded_position = [-73.19134, 38.414]
+    commanded_position = [convert_dmm_to_dd(-7319.134), convert_dmm_to_dd(3841.4)]
     estimated_positions = np.zeros((1,200,2))
-    measured_position = [[-74.23063, 38.415283], [-74.22113, 38.41733], [-74.205475, 38.416848], [-74.186723, 38.411815], [-74.16965, 38.407292], [-74.154815, 38.407554]]
+    measured_position = [[-7423.063, 3841.5283], [-7422.113, 3841.733], [-7420.5475, 3841.6848], [-7418.6723, 3841.1815], [-7416.965, 3840.7292], [-7415.4815, 3840.7554]]
+    measured_position = dmm_to_dd(measured_position)
+    # print(measured_position)
     resampled_positions = np.zeros((1,200,2))
 
     times = np.arange(0, duration, 2)
@@ -140,12 +167,11 @@ def run_filter(duration, startLong=-74.239733, startLat=38.414779, v_kinematic=0
         diff_in_lon = commanded_position[0]-initial_positions[0,:,0] #Difference in lattitude between commanded and inital points, in meters.
         diff_in_lat = commanded_position[1]-initial_positions[0,:,1] #Difference in longitude between commanded and initial points, in meters.
         heading_angle = np.arctan2(diff_in_lat,diff_in_lon)
-        print(np.mean(heading_angle))
+        # print(np.mean(heading_angle))
 
         estimated_positions[0] = estimate_positions(initial_positions[0], heading_angle, t=t, v_kinematic=0.29)
         if measured_position:
             resampled_positions[0,:,:] = resample(estimated_positions[0], measured_position[t//2])
-
 
 
         plot_positions(initial_positions, estimated_positions, commanded_position=commanded_position, measured_position=measured_position[t//2], resampled_positions=resampled_positions)

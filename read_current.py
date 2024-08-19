@@ -54,4 +54,4 @@ def get_closest_current(glider_long, glider_lat, t=1):
 
 v_c_east,v_c_north = get_closest_current(np.array([-74.23063, -74.22113, -74.205475, -74.186723, -74.16965, -74.154815]), np.array([38.415283, 38.41733, 38.416848, 38.411815, 38.407292, 38.407554]), t=2)
 
-print(v_c_east,v_c_north)
+# print(v_c_east,v_c_north)
